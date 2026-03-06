@@ -36,7 +36,7 @@ export default function LocationSearch({ onSelect }: any) {
       {/* SEARCH INPUT */}
 
       <input
-        className="border p-2 w-full rounded"
+        className="border p-2 w-full rounded text-gray-500 font-bold"
         placeholder="Search location..."
         value={query}
         onChange={(e) => handleSearch(e.target.value)}
