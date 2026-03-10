@@ -165,9 +165,9 @@ body,
 
 body {
   margin: 0;
-  color: var(--sea-ink);
+  color: var(--foreground);
   font-family: var(--font-sans);
-  background-color: var(--bg-base);
+  background-color: var(--background);
   background:
     radial-gradient(1100px 620px at -8% -10%, var(--hero-a), transparent 58%),
     radial-gradient(1050px 620px at 112% -12%, var(--hero-b), transparent 62%),
@@ -206,14 +206,15 @@ body::after {
 }
 
 a {
-  color: var(--lagoon-deep);
-  text-decoration-color: rgba(50, 143, 151, 0.4);
+  color: var(--primary);
+  text-decoration-color: var(--primary-foreground);
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
+  opacity: 0.8;
 }
 
 a:hover {
-  color: #246f76;
+  opacity: 1;
 }
 
 code {
@@ -234,10 +235,10 @@ pre code {
 }
 
 .prose pre {
-  border: 1px solid var(--line);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: #1d2e45;
-  color: #e8efff;
+  background: var(--card);
+  color: var(--card-foreground);
 }
 
 .page-wrap {

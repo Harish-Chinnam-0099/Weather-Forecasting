@@ -38,15 +38,15 @@ export default function SunCard({
 
           {/* Sunrise */}
 
-          <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-orange-50">
+          <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-secondary border border-border">
 
-            <Sunrise className="w-8 h-8 text-orange-500 mb-2" />
+            <Sunrise className="w-8 h-8 text-primary mb-2" />
 
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               Sunrise
             </p>
 
-            <p className="text-lg font-semibold text-gray-500">
+            <p className="text-lg font-semibold text-foreground">
               {sunriseTime}
             </p>
 
@@ -55,15 +55,15 @@ export default function SunCard({
 
           {/* Sunset */}
 
-          <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-purple-50">
+          <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-secondary border border-border">
 
-            <Sunset className="w-8 h-8 text-purple-500 mb-2" />
+            <Sunset className="w-8 h-8 text-primary mb-2" />
 
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               Sunset
             </p>
 
-            <p className="text-lg font-semibold text-gray-500">
+            <p className="text-lg font-semibold text-foreground">
               {sunsetTime}
             </p>
 

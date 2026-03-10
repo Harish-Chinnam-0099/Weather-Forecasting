@@ -1,80 +1,88 @@
 import { useState } from "react"
-import { searchLocation } from "../api/searchLocation"
+import { searchLocation, reverseGeocode } from "../api/searchLocation"
+import type { SearchedPlace } from "#/types/types"
 
-export default function LocationSearch({ onSelect }: any) {
+type Props = {
+  onSelect: (place: SearchedPlace | null, lat: number, lon: number, name: string) => void
+}
 
+export default function LocationSearch({ onSelect }: Props) {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<any[]>([])
 
   const handleSearch = async (value: string) => {
-
     setQuery(value)
-
-    if (value.length < 2) return
-
+    if (value.length < 2) {
+      setResults([])
+      return
+    }
     const data = await searchLocation(value)
-
     setResults(data || [])
   }
 
-  const useCurrentLocation = () => {
+  const handleDropdownSelect = (loc: any) => {
+    const place: SearchedPlace = {
+      lat: loc.latitude,
+      lon: loc.longitude,
+      name: loc.name,
+      country: loc.country ?? "",
+      countryCode: (loc.country_code as string ?? "").toUpperCase(),
+    }
+    onSelect(place, place.lat, place.lon, `${place.name}, ${place.country}`)
+    setQuery("")
+    setResults([])
+  }
 
-    navigator.geolocation.getCurrentPosition((position) => {
-
+  const handleCurrentLocation = async () => {
+    navigator.geolocation.getCurrentPosition(async (position) => {
       const lat = position.coords.latitude
       const lon = position.coords.longitude
+      const geoData = await reverseGeocode(lat, lon)
 
-      onSelect(lat, lon, "Current Location")
-
+      if (geoData) {
+        const place: SearchedPlace = {
+          lat,
+          lon,
+          name: geoData.name,
+          country: geoData.country,
+          countryCode: geoData.countryCode,
+        }
+        onSelect(place, lat, lon, `${geoData.name}, ${geoData.country}`)
+      } else {
+        onSelect(null, lat, lon, "Current Location")
+      }
     })
   }
 
   return (
-
     <div className="mb-6 space-y-2">
-
-      {/* SEARCH INPUT */}
-
       <input
-        className="border p-2 w-full rounded text-gray-500 font-bold"
+        className="border p-2 w-full rounded text-foreground bg-background font-bold placeholder:text-muted-foreground"
         placeholder="Search location..."
         value={query}
         onChange={(e) => handleSearch(e.target.value)}
       />
 
-      {/* CURRENT LOCATION BUTTON */}
-
       <button
-        onClick={useCurrentLocation}
-        className="px-3 py-1 text-sm bg-blue-500 text-white rounded"
+        onClick={handleCurrentLocation}
+        className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
       >
         Use Current Location
       </button>
 
-      {/* SEARCH RESULTS */}
-
-      <div className="mt-2 space-y-1">
-        {results?.map((loc: any) => (
-
-          <div
-            key={loc.id}
-            className="cursor-pointer p-2 border rounded hover:bg-muted"
-            onClick={() =>
-              onSelect(
-                loc.latitude,
-                loc.longitude,
-                `${loc.name}, ${loc.country}`
-              )
-            }
-          >
-            {loc.name}, {loc.country}
-
-          </div>
-
-        ))}
-
-      </div>
-
+      {results.length > 0 && (
+        <div className="mt-2 space-y-1">
+          {results.map((loc: any) => (
+            <div
+              key={loc.id}
+              className="cursor-pointer p-2 border rounded hover:bg-muted"
+              onClick={() => handleDropdownSelect(loc)}
+            >
+              {loc.name}, {loc.country}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

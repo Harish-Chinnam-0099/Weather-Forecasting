@@ -1,435 +1,227 @@
-// import { createFileRoute } from "@tanstack/react-router"
-// import { useQuery } from "@tanstack/react-query"
-// import { useState, useEffect } from "react"
-
-// import { getWeather } from "../api/weather"
-// import WeatherIcon from "#/components/weather-icon"
-// import HourlyGraph from "#/components/hourly-graph"
-// import LocationSearch from "#/components/LocationSearch"
-// import LocationPopup from "#/components/location-popup"
-
-// import {
-//   Card,
-//   CardContent,
-//   CardHeader,
-//   CardTitle,
-// } from "@/components/ui/card"
-
-// export const Route = createFileRoute("/")({
-//   component: Index,
-// })
-
-// function Index() {
-
-//   const [lat, setLat] = useState<number | null>(null)
-//   const [lon, setLon] = useState<number | null>(null)
-//   const [locationName, setLocationName] = useState("Detecting location...")
-
-//   // AUTO DETECT LOCATION
-//   useEffect(() => {
-
-//     navigator.geolocation.getCurrentPosition(
-
-//       (position) => {
-
-//         const latitude = position.coords.latitude
-//         const longitude = position.coords.longitude
-
-//         setLat(latitude)
-//         setLon(longitude)
-
-//         setLocationName("Current Location")
-
-//       },
-
-//       () => {
-
-//         setLat(17.385)
-//         setLon(78.4867)
-//         setLocationName("Hyderabad")
-
-//       }
-
-//     )
-
-//   }, [])
-
-//   const handleLocationSelect = (
-//     latitude: number,
-//     longitude: number,
-//     name: string
-//   ) => {
-
-//     setLat(latitude)
-//     setLon(longitude)
-//     setLocationName(name)
-
-//   }
-
-//   const { data: weather, isLoading } = useQuery({
-
-//     queryKey: ["weather", lat, lon],
-
-//     queryFn: () => getWeather(lat!, lon!),
-
-//     enabled: !!lat && !!lon,
-
-//   })
-//   useEffect(() => {
-
-//   const fetchCityName = async () => {
-
-//     if (!lat || !lon) return
-
-//     try {
-
-//       const res = await fetch(
-//         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
-//       )
-
-//       const data = await res.json()
-
-//       if (data?.address) {
-
-//         const city =
-//           data.address.city ||
-//           data.address.town ||
-//           data.address.village ||
-//           data.address.state
-
-//         setLocationName(city)
-//       }
-
-//     } catch (error) {
-
-//       console.log("Failed to fetch city name")
-
-//     }
-
-//   }
-
-//   fetchCityName()
-
-// }, [lat, lon])
-
-//   if (!lat || !lon) {
-//     return <div className="p-6">Getting your location...</div>
-//   }
-
-//   if (isLoading) {
-//     return <div className="p-6">Loading weather...</div>
-//   }
-
-//   if (!weather || !weather.daily) {
-//     return <div className="p-6">Weather data unavailable</div>
-    
-//   }
-
-//   const daily = weather.daily
-//   const current=weather.current
-//   const todayIndex = 2
-
-//   const todayMax = daily.temperature_2m_max[todayIndex]
-//   const todayMin = daily.temperature_2m_min[todayIndex]
-//   const temps=current.temperature_2m
-
-//   const currentTemp=weather.hourly.temperature_2m[0]
-//   let bgClass="bg-sky-100"
-//   if(currentTemp>35){
-//     bgClass="bg-orange-200"
-//   }
-//   if(currentTemp<15){
-//     bgClass="bg-blue-200"
-//   }
-
-//   return (
-
-//     <div className={`container mx-auto p-6 space-y-8 min-h-screen ${bgClass}`}>
-
-//       <LocationSearch onSelect={handleLocationSelect} />
-//       <h2 className="text-xl font-semibold">
-//         Weather in {locationName}
-//       </h2>
-
-
-//       <LocationPopup weather={weather} />
-
-
-//       <Card>
-
-//         <CardHeader>
-//           <CardTitle>Today's Weather</CardTitle>
-//         </CardHeader>
-
-//         <CardContent>
-          
-//           <div className="text-3xl font-bold">
-//             {temps}°C
-//           </div>
-
-//           <div className="text-gray-500">
-//             Min Temp: {todayMin}°C
-//           </div>
-//          <div className="text-gray-500">
-//           Max Temp:{todayMax}°C
-//          </div>
-//         </CardContent>
-
-//       </Card>
-
-//       <HourlyGraph data={weather} />
-
-
-//       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-
-//         {daily.time.map((day: string, i: number) => {
-
-//           const max = daily.temperature_2m_max[i]
-//           const min = daily.temperature_2m_min[i]
-
-//           let label = day
-
-//           if (i === todayIndex) label = "Today"
-//           if (i === todayIndex - 1) label = "Yesterday"
-//           if (i === todayIndex - 2) label = "2 Days Ago"
-
-//           return (
-
-//             <Card key={i}>
-
-//               <CardHeader>
-//                 <CardTitle className="text-sm">
-//                   {label}
-//                 </CardTitle>
-//               </CardHeader>
-
-//               <CardContent>
-//                 <WeatherIcon temp={max} />
-//                 <div className="text-lg font-semibold">
-//                   {max}°C
-//                 </div>
-
-//                 <div className="text-sm text-gray-500">
-//                   Min: {min}°C
-//                 </div>
-
-//               </CardContent>
-
-//             </Card>
-
-//           )
-
-//         })}
-
-//       </div>
-
-//     </div>
-
-//   )
-
-// }
-
-
-
-
 import { createFileRoute } from "@tanstack/react-router"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState, useEffect } from "react"
 
 import { getWeather } from "../api/weather"
-
+import { reverseGeocode } from "../api/searchLocation"
+import { Skeleton } from "#/components/ui/skeleton"
 import LocationSearch from "../components/LocationSearch"
 import LocationPopup from "../components/location-popup"
 import HourlyGraph from "#/components/hourly-graph"
 import ForecastCards from "#/components/weekly-forecast"
-import {TodayWeatherCard}  from "#/components/weather-card"
+import { TodayWeatherCard, WeatherDescription } from "#/components/weather-card"
 import SunCard from "#/components/sun-card"
 import DateWeatherCard from "#/components/DateWeatherCard"
-import { WeatherDescription } from "#/components/weather-card"
+import LocationDetailsSection from "#/components/LocationDetailsSection"
+import type { SearchedPlace } from "#/types/types"
 
 export const Route = createFileRoute("/")({
   component: Index,
 })
 
-function Index() {
+function LoadingSkeleton() {
+  return (
+    <div className="container mx-auto p-6 space-y-6 min-h-screen">
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-6 w-48" />
+      <Skeleton className="h-12 w-full" />
+      <div className="grid md:grid-cols-3 gap-4">
+        <Skeleton className="h-52" />
+        <Skeleton className="h-52" />
+        <Skeleton className="h-52" />
+      </div>
+      <Skeleton className="h-28 w-full" />
+      <Skeleton className="h-72 w-full" />
+      <div className="grid grid-cols-5 gap-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-36" />
+        ))}
+      </div>
+    </div>
+  )
+}
 
+function Index() {
   const [lat, setLat] = useState<number | null>(null)
   const [lon, setLon] = useState<number | null>(null)
-  const [locationName, setLocationName] = useState("")
+  // null = auto-detect mode (use Nominatim), string = manually chosen name
+  const [manualName, setManualName] = useState<string | null>(null)
+  const [searchedPlace, setSearchedPlace] = useState<SearchedPlace | null>(null)
+  const queryClient = useQueryClient()
 
-  // Detect device location
+  // Auto-detect on page load (geolocation is callback-based, must use useEffect)
   useEffect(() => {
-
     navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude
+        const lon = position.coords.longitude
+        setLat(lat)
+        setLon(lon)
 
-      (position) => {
-
-        const latitude = position.coords.latitude
-        const longitude = position.coords.longitude
-
-        setLat(latitude)
-        setLon(longitude)
-        setLocationName("Your Location")
-
+        const geoData = await reverseGeocode(lat, lon)
+        if (geoData) {
+          setSearchedPlace({
+            lat,
+            lon,
+            name: geoData.name,
+            country: geoData.country,
+            countryCode: geoData.countryCode,
+          })
+        }
       },
+      async () => {
+        const lat = 17.385
+        const lon = 78.4867
+        setLat(lat)
+        setLon(lon)
+        setManualName("Hyderabad")
 
-      () => {
-
-        setLat(17.385)
-        setLon(78.4867)
-        setLocationName("Hyderabad")
-
+        const geoData = await reverseGeocode(lat, lon)
+        if (geoData) {
+          setSearchedPlace({
+            lat,
+            lon,
+            name: geoData.name,
+            country: geoData.country,
+            countryCode: geoData.countryCode,
+          })
+        }
       }
-
     )
-
   }, [])
 
-  const handleLocationSelect = (
-    latitude: number,
-    longitude: number,
-    name: string
-  ) => {
+  // Clear location-specific caches when location changes
+  useEffect(() => {
+    if (searchedPlace) {
+      queryClient.invalidateQueries({ queryKey: ["country", searchedPlace.countryCode] })
+      queryClient.invalidateQueries({ queryKey: ["photos", searchedPlace.name] })
+      queryClient.invalidateQueries({ queryKey: ["places", searchedPlace.lat, searchedPlace.lon] })
+    }
+  }, [searchedPlace, queryClient])
 
+  // Called when user picks from search or clicks current location button
+  const handleSelect = (place: SearchedPlace | null, latitude: number, longitude: number, name: string) => {
     setLat(latitude)
     setLon(longitude)
-    setLocationName(name)
-
+    setManualName(name)
+    setSearchedPlace(place)
   }
 
   const { data: weather, isLoading } = useQuery({
-
     queryKey: ["weather", lat, lon],
-
     queryFn: () => getWeather(lat!, lon!),
-
     enabled: !!lat && !!lon,
-
   })
-    useEffect(() => {
 
-  const fetchCityName = async () => {
-
-    if (!lat || !lon) return
-
-    try {
-
+  // Reverse-geocode only for the initial auto-detected location (manualName is null)
+  const { data: nominatimCity } = useQuery({
+    queryKey: ["nominatim", lat, lon],
+    queryFn: async () => {
       const res = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
       )
-
       const data = await res.json()
-
       if (data?.address) {
-
-        const city =
+        return (
           data.address.city ||
           data.address.town ||
           data.address.village ||
-          data.address.state
-
-        setLocationName(city)
+          data.address.hamlet ||
+          data.address.state ||
+          ""
+        )
       }
+      return ""
+    },
+    enabled: manualName === null && !!lat && !!lon,
+    staleTime: 1000 * 60 * 30,  // 30 minutes
+    gcTime: 1000 * 60 * 60,     // 1 hour
+  })
 
-    } catch (error) {
+  // Use manual name if set, otherwise use Nominatim result
+  const locationName = manualName ?? nominatimCity ?? ""
 
-      console.log("Failed to fetch city name")
-
-    }
-
-  }
-
-  fetchCityName()
-
-}, [lat, lon])
-
-  if (!lat || !lon) {
-    return <div className="p-6">Getting your location...</div>
-  }
-
-  if (isLoading) {
-    return <div className="p-6">Loading weather...</div>
+  if (!lat || !lon || isLoading) {
+    return <LoadingSkeleton />
   }
 
   if (!weather || !weather.daily) {
     return <div className="p-6">Weather data unavailable</div>
   }
-  const timezone=weather.timezone
-  const daily = weather.daily
-  const current = weather.current
-  // const hourly=weather.hourly
- 
+
   const todayIndex = 2
 
+  const { timezone, daily, current } = weather
   const todayMax = daily.temperature_2m_max[todayIndex]
   const todayMin = daily.temperature_2m_min[todayIndex]
-  const humidity =current.relative_humidity_2m
+  const humidity = current.relative_humidity_2m
   const temps = current.temperature_2m
-  const rain =daily.rain_sum[0]
-  const sunrise=daily.sunrise[todayIndex]
-  const sunset=daily.sunset[todayIndex]
-  const isDay=weather.current.is_day
+  const rain = daily.rain_sum[todayIndex]
+  const sunrise = daily.sunrise[todayIndex]
+  const sunset = daily.sunset[todayIndex]
+  const isDay = current.is_day
+  const weathercode = current.weathercode
 
-  // const chartData = weather.hourly.time.slice(0, 24).map((t: any, i: number) => ({
-  //   hour: new Date(t).getHours(),
-  //   max: weather.hourly.temperature_2m[i],
-  //   min: weather.hourly.temperature_2m[i],
-  // }))
-
-  const currentTemp = temps
-
-  let bgClass = "bg-sky-100"
-
-  if (currentTemp > 35) {
-    bgClass = "bg-orange-200"
-  }
-
-  if (currentTemp < 15) {
-    bgClass = "bg-blue-200"
+  // Subtle background based on temperature
+  const getTemperatureBackground = () => {
+    if (temps > 30) {
+      // Hot - warm subtle background
+      return "bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/30"
+    } else if (temps < 15) {
+      // Cold - cool subtle background
+      return "bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30"
+    } else {
+      // Moderate - neutral subtle background
+      return "bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/30 dark:to-slate-800/30"
+    }
   }
 
   return (
+    <div className={`container mx-auto p-6 space-y-6 min-h-screen ${getTemperatureBackground()}`}>
+      <LocationSearch onSelect={handleSelect} />
 
-    <div className={`container mx-auto p-6 space-y-6 min-h-screen ${bgClass}`}>
-
-      <LocationSearch onSelect={handleLocationSelect} />
-
-      <h2 className="text-xl font-semibold text-gray-500">
+      <h2 className="text-xl font-semibold text-foreground">
         Weather in {locationName}
       </h2>
 
       <LocationPopup weather={weather} />
- 
-      <div className="grid md:grid-cols-3 gap-4 item-stretch">
+
+      <div className="grid md:grid-cols-3 gap-4 items-stretch">
         <div className="col-span-1">
-      <TodayWeatherCard
-        temps={temps}
-        todayMin={todayMin}
-        todayMax={todayMax}
-        humidity={humidity}
-        timezone={timezone}
-        rain={rain}
-        weatherCode={weather.current.weathercode}
-        isDay={isDay}
-      />
+          <TodayWeatherCard
+            temps={temps}
+            todayMin={todayMin}
+            todayMax={todayMax}
+            humidity={humidity}
+            timezone={timezone}
+            rain={rain}
+            weathercode={weathercode}
+            isDay={isDay}
+          />
+        </div>
+        <div className="col-span-1">
+          <WeatherDescription weathercode={weathercode} isDay={isDay} />
+        </div>
+        <div className="col-span-1">
+          <DateWeatherCard weather={weather} />
+        </div>
       </div>
-      <div className="col-span-1">
-        <WeatherDescription/>
-      </div>
-      <div className="col-span-1">
-      <DateWeatherCard weather={weather}/>
-      </div>
-      </div>
-      
-      <SunCard
-      sunrise={sunrise}
-      sunset={sunset}/>
+
+      <SunCard sunrise={sunrise} sunset={sunset} />
 
       <HourlyGraph data={weather} />
 
       <ForecastCards daily={daily} />
 
+      {searchedPlace && (
+        <LocationDetailsSection
+          name={searchedPlace.name}
+          country={searchedPlace.country}
+          countryCode={searchedPlace.countryCode}
+          lat={searchedPlace.lat}
+          lon={searchedPlace.lon}
+        />
+      )}
     </div>
-
   )
 }
