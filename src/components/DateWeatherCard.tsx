@@ -37,11 +37,11 @@ export default function DateWeatherCard({ weather }: { weather: WeatherData }) {
 
   return (
     <>
-      <Card>
+      <Card className="h-full text-center">
         <CardHeader>
           <CardTitle>Select Date Weather</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex justify-center">
           <Calendar
             mode="single"
             selected={date}

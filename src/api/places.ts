@@ -7,10 +7,10 @@ export async function getNearbyPlaces(lat: number, lon: number): Promise<NearbyP
   const query = `
     [out:json][timeout:20];
     (
-      node["tourism"~"attraction|museum|viewpoint|artwork|gallery"](around:15000,${lat},${lon});
-      way["tourism"~"attraction|museum|viewpoint"](around:15000,${lat},${lon});
-      node["historic"~"monument|castle|ruins|memorial|fort"](around:15000,${lat},${lon});
-      way["historic"~"monument|castle|ruins|memorial|fort"](around:15000,${lat},${lon});
+      node["tourism"~"attraction|museum|viewpoint|artwork|gallery"](around:40000,${lat},${lon});
+      way["tourism"~"attraction|museum|viewpoint"](around:40000,${lat},${lon});
+      node["historic"~"monument|castle|ruins|memorial|fort"](around:40000,${lat},${lon});
+      way["historic"~"monument|castle|ruins|memorial|fort"](around:40000,${lat},${lon});
       node["leisure"~"park|garden"](around:10000,${lat},${lon});
       way["leisure"~"park|garden"](around:10000,${lat},${lon});
     );

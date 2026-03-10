@@ -65,8 +65,9 @@ export default function LocationSearch({ onSelect }: Props) {
 
       <button
         onClick={handleCurrentLocation}
-        className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
-      >
+        // className="px-3 py-1 text-sm bg-primary text-gray-500 rounded hover:opacity-90"
+        className="px-3 py-1 text-sm font-bold bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-colors"
+        >
         Use Current Location
       </button>
 
@@ -75,7 +76,7 @@ export default function LocationSearch({ onSelect }: Props) {
           {results.map((loc: any) => (
             <div
               key={loc.id}
-              className="cursor-pointer p-2 border rounded hover:bg-muted"
+               className="cursor-pointer p-2 border rounded hover text-l text-black drop-shadow-md"
               onClick={() => handleDropdownSelect(loc)}
             >
               {loc.name}, {loc.country}

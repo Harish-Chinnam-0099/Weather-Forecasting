@@ -162,25 +162,36 @@ function Index() {
   const isDay = current.is_day
   const weathercode = current.weathercode
 
-  // Subtle background based on temperature
+  // Impressive dynamic background based on temperature, time of day, and weather
   const getTemperatureBackground = () => {
+    const isNight = !isDay
+
     if (temps > 30) {
-      // Hot - warm subtle background
-      return "bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/30"
+      // Hot weather - warm vibrant gradients
+      if (isNight) {
+        return "bg-gradient-to-br from-orange-950/50 via-red-950/40 to-slate-900/50"
+      }
+      return "bg-gradient-to-br from-amber-50 via-orange-50 to-red-50"
     } else if (temps < 15) {
-      // Cold - cool subtle background
-      return "bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30"
+      // Cold weather - cool vibrant gradients
+      if (isNight) {
+        return "bg-gradient-to-br from-blue-950/50 via-cyan-950/40 to-slate-900/50"
+      }
+      return "bg-gradient-to-br from-blue-50 via-cyan-50 to-slate-50"
     } else {
-      // Moderate - neutral subtle background
-      return "bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900/30 dark:to-slate-800/30"
+      // Moderate weather - balanced gradients
+      if (isNight) {
+        return "bg-gradient-to-br from-slate-900/50 via-slate-800/40 to-slate-900/50"
+      }
+      return "bg-gradient-to-br from-slate-50 via-emerald-50 to-sky-50"
     }
   }
 
   return (
-    <div className={`container mx-auto p-6 space-y-6 min-h-screen ${getTemperatureBackground()}`}>
+    <div className={`container mx-auto p-6 space-y-6 min-h-screen rounded-3xl transition-all duration-500 ${getTemperatureBackground()}`}>
       <LocationSearch onSelect={handleSelect} />
 
-      <h2 className="text-xl font-semibold text-foreground">
+      <h2 className="text-xl font-semibold text-black drop-shadow-md">
         Weather in {locationName}
       </h2>
 
