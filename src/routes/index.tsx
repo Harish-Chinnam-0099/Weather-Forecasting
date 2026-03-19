@@ -9,7 +9,7 @@ import LocationSearch from "../components/LocationSearch"
 import LocationPopup from "../components/location-popup"
 import HourlyGraph from "#/components/hourly-graph"
 import ForecastCards from "#/components/weekly-forecast"
-import { TodayWeatherCard, WeatherDescription } from "#/components/weather-card"
+import { WeatherHeroCard } from "#/components/weather-card"
 import SunCard from "#/components/sun-card"
 import DateWeatherCard from "#/components/DateWeatherCard"
 import LocationDetailsSection from "#/components/LocationDetailsSection"
@@ -19,24 +19,37 @@ export const Route = createFileRoute("/")({
   component: Index,
 })
 
+const TEMP_HOT = 30
+const TEMP_COLD = 10
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-0.5">
+      {children}
+    </p>
+  )
+}
+
 function LoadingSkeleton() {
   return (
-    <div className="container mx-auto p-6 space-y-6 min-h-screen">
-      <Skeleton className="h-10 w-full" />
-      <Skeleton className="h-6 w-48" />
-      <Skeleton className="h-12 w-full" />
-      <div className="grid md:grid-cols-3 gap-4">
-        <Skeleton className="h-52" />
-        <Skeleton className="h-52" />
-        <Skeleton className="h-52" />
+    <div className="w-full max-w-7xl mx-auto px-4 py-6 space-y-5">
+      {/* Search */}
+      <Skeleton className="h-12 w-full rounded-2xl" />
+      {/* Hero */}
+      <Skeleton className="h-64 sm:h-72 w-full rounded-3xl" />
+      {/* Chart + Sun */}
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Skeleton className="lg:col-span-2 h-80 rounded-3xl" />
+        <Skeleton className="h-80 rounded-3xl" />
       </div>
-      <Skeleton className="h-28 w-full" />
-      <Skeleton className="h-72 w-full" />
-      <div className="grid grid-cols-5 gap-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-36" />
+      {/* Forecast strip */}
+      <div className="flex gap-3 overflow-hidden">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-40 w-24 shrink-0 rounded-2xl" />
         ))}
       </div>
+      {/* Calendar */}
+      <Skeleton className="h-72 w-full rounded-3xl" />
     </div>
   )
 }
@@ -44,38 +57,37 @@ function LoadingSkeleton() {
 function Index() {
   const [lat, setLat] = useState<number | null>(null)
   const [lon, setLon] = useState<number | null>(null)
-  // null = auto-detect mode (use Nominatim), string = manually chosen name
   const [manualName, setManualName] = useState<string | null>(null)
   const [searchedPlace, setSearchedPlace] = useState<SearchedPlace | null>(null)
+  const [popupOpen, setPopupOpen] = useState(false)
   const queryClient = useQueryClient()
 
-  // Auto-detect on page load (geolocation is callback-based, must use useEffect)
+  // Auto-detect location on mount
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const lat = position.coords.latitude
-        const lon = position.coords.longitude
-        setLat(lat)
-        setLon(lon)
-
-        const geoData = await reverseGeocode(lat, lon)
+        const { latitude, longitude } = position.coords
+        setLat(latitude)
+        setLon(longitude)
+        const geoData = await reverseGeocode(latitude, longitude)
         if (geoData) {
           setSearchedPlace({
-            lat,
-            lon,
+            lat: latitude,
+            lon: longitude,
             name: geoData.name,
             country: geoData.country,
             countryCode: geoData.countryCode,
           })
         }
+        setPopupOpen(true)
       },
       async () => {
+        // Geolocation denied — fallback to Hyderabad
         const lat = 17.385
         const lon = 78.4867
         setLat(lat)
         setLon(lon)
         setManualName("Hyderabad")
-
         const geoData = await reverseGeocode(lat, lon)
         if (geoData) {
           setSearchedPlace({
@@ -86,11 +98,12 @@ function Index() {
             countryCode: geoData.countryCode,
           })
         }
+        setPopupOpen(true)
       }
     )
   }, [])
 
-  // Clear location-specific caches when location changes
+  // Invalidate location-specific caches when place changes
   useEffect(() => {
     if (searchedPlace) {
       queryClient.invalidateQueries({ queryKey: ["country", searchedPlace.countryCode] })
@@ -99,140 +112,156 @@ function Index() {
     }
   }, [searchedPlace, queryClient])
 
-  // Called when user picks from search or clicks current location button
+  // Called when user picks from search or clicks "My Location"
   const handleSelect = (place: SearchedPlace | null, latitude: number, longitude: number, name: string) => {
     setLat(latitude)
     setLon(longitude)
     setManualName(name)
     setSearchedPlace(place)
+    setPopupOpen(true)
   }
 
-  const { data: weather, isLoading } = useQuery({
+  const { data: weather, isLoading, isError } = useQuery({
     queryKey: ["weather", lat, lon],
     queryFn: () => getWeather(lat!, lon!),
     enabled: !!lat && !!lon,
   })
 
-  // Reverse-geocode only for the initial auto-detected location (manualName is null)
-  const { data: nominatimCity } = useQuery({
+  // Reverse-geocode only for auto-detected location (no manual name set)
+  const { data: nominatimName } = useQuery({
     queryKey: ["nominatim", lat, lon],
-    queryFn: async () => {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
-      )
-      const data = await res.json()
-      if (data?.address) {
-        return (
-          data.address.city ||
-          data.address.town ||
-          data.address.village ||
-          data.address.hamlet ||
-          data.address.state ||
-          ""
-        )
-      }
-      return ""
-    },
+    queryFn: () => reverseGeocode(lat!, lon!).then((d) => d?.name ?? ""),
     enabled: manualName === null && !!lat && !!lon,
-    staleTime: 1000 * 60 * 30,  // 30 minutes
-    gcTime: 1000 * 60 * 60,     // 1 hour
+    staleTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 60,
   })
 
-  // Use manual name if set, otherwise use Nominatim result
-  const locationName = manualName ?? nominatimCity ?? ""
+  const locationName = manualName ?? searchedPlace?.name ?? nominatimName ?? ""
 
-  if (!lat || !lon || isLoading) {
-    return <LoadingSkeleton />
+  if (!lat || !lon || isLoading) return <LoadingSkeleton />
+
+  if (isError || !weather?.daily) {
+    return (
+      <div className="w-full max-w-7xl mx-auto px-4 py-24 text-center space-y-2">
+        <p className="text-xl font-semibold text-foreground">Unable to load weather data</p>
+        <p className="text-sm text-muted-foreground">
+          Please try refreshing or search for a different location.
+        </p>
+      </div>
+    )
   }
-
-  if (!weather || !weather.daily) {
-    return <div className="p-6">Weather data unavailable</div>
-  }
-
-  const todayIndex = 2
 
   const { timezone, daily, current } = weather
-  const todayMax = daily.temperature_2m_max[todayIndex]
-  const todayMin = daily.temperature_2m_min[todayIndex]
-  const humidity = current.relative_humidity_2m
-  const temps = current.temperature_2m
-  const rain = daily.rain_sum[todayIndex]
-  const sunrise = daily.sunrise[todayIndex]
-  const sunset = daily.sunset[todayIndex]
-  const isDay = current.is_day
-  const weathercode = current.weathercode
 
-  // Impressive dynamic background based on temperature, time of day, and weather
-  const getTemperatureBackground = () => {
+  // Dynamic today index — robust, not hardcoded
+  const todayStr = new Date().toISOString().split("T")[0]
+  const todayIndex = daily.time.indexOf(todayStr)
+  const safeIndex = todayIndex >= 0 ? todayIndex : 2
+
+  const temps          = current.temperature_2m
+  const feelsLike      = current.apparent_temperature
+  const todayMax       = daily.temperature_2m_max[safeIndex]
+  const todayMin       = daily.temperature_2m_min[safeIndex]
+  const humidity       = current.relative_humidity_2m
+  const rain           = daily.rain_sum[safeIndex]
+  const sunrise        = daily.sunrise[safeIndex]
+  const sunset         = daily.sunset[safeIndex]
+  const isDay          = current.is_day
+  const weathercode    = current.weathercode
+  const windSpeed      = current.wind_speed_10m
+  const windDirection  = current.wind_direction_10m
+  const pressure       = current.surface_pressure
+  const visibility     = current.visibility
+  const uvIndex        = daily.uv_index_max[safeIndex] ?? 0
+
+  const getPageBackground = () => {
     const isNight = !isDay
-
-    if (temps > 30) {
-      // Hot weather - warm vibrant gradients
-      if (isNight) {
-        return "bg-gradient-to-br from-orange-950/50 via-red-950/40 to-slate-900/50"
-      }
-      return "bg-gradient-to-br from-amber-50 via-orange-50 to-red-50"
-    } else if (temps < 15) {
-      // Cold weather - cool vibrant gradients
-      if (isNight) {
-        return "bg-gradient-to-br from-blue-950/50 via-cyan-950/40 to-slate-900/50"
-      }
-      return "bg-gradient-to-br from-blue-50 via-cyan-50 to-slate-50"
-    } else {
-      // Moderate weather - balanced gradients
-      if (isNight) {
-        return "bg-gradient-to-br from-slate-900/50 via-slate-800/40 to-slate-900/50"
-      }
-      return "bg-gradient-to-br from-slate-50 via-emerald-50 to-sky-50"
+    if (temps > TEMP_HOT) {
+      return isNight
+        ? "bg-gradient-to-b from-orange-950/40 via-red-950/10 to-background"
+        : "bg-gradient-to-b from-amber-50 via-orange-50/40 to-background"
     }
+    if (temps < TEMP_COLD) {
+      return isNight
+        ? "bg-gradient-to-b from-blue-950/40 via-cyan-950/10 to-background"
+        : "bg-gradient-to-b from-blue-50 via-cyan-50/40 to-background"
+    }
+    return isNight
+      ? "bg-gradient-to-b from-slate-900/40 via-slate-800/10 to-background"
+      : "bg-gradient-to-b from-sky-50 via-blue-50/40 to-background"
   }
 
   return (
-    <div className={`container mx-auto p-6 space-y-6 min-h-screen rounded-3xl transition-all duration-500 ${getTemperatureBackground()}`}>
-      <LocationSearch onSelect={handleSelect} />
+    <div className={`min-h-screen transition-colors duration-700 ${getPageBackground()}`}>
+      {/* Max-width wrapper — keeps content readable on ultra-wide screens */}
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
-      <h2 className="text-xl font-semibold text-black drop-shadow-md">
-        Weather in {locationName}
-      </h2>
+        {/* ── Search ── */}
+        <LocationSearch onSelect={handleSelect} />
 
-      <LocationPopup weather={weather} />
+        {/* ── Weather advisory popup ── */}
+        <LocationPopup
+          weather={weather}
+          open={popupOpen}
+          onOpenChange={setPopupOpen}
+          locationName={locationName}
+        />
 
-      <div className="grid md:grid-cols-3 gap-4 items-stretch">
-        <div className="col-span-1">
-          <TodayWeatherCard
-            temps={temps}
-            todayMin={todayMin}
-            todayMax={todayMax}
-            humidity={humidity}
-            timezone={timezone}
-            rain={rain}
-            weathercode={weathercode}
-            isDay={isDay}
-          />
+        {/* ── Hero card ── */}
+        <WeatherHeroCard
+          temps={temps}
+          feelsLike={feelsLike}
+          todayMin={todayMin}
+          todayMax={todayMax}
+          humidity={humidity}
+          rain={rain}
+          timezone={timezone}
+          weathercode={weathercode}
+          isDay={isDay}
+          windSpeed={windSpeed}
+          windDirection={windDirection}
+          pressure={pressure}
+          visibility={visibility}
+          locationName={locationName}
+          uvIndex={uvIndex}
+        />
+
+        {/* ── Hourly forecast + Sun cycle ── */}
+        <div>
+          <SectionLabel>Hourly Overview</SectionLabel>
+          <div className="grid lg:grid-cols-3 gap-4 items-stretch">
+            <div className="lg:col-span-2">
+              <HourlyGraph data={weather} />
+            </div>
+            <div>
+              <SunCard sunrise={sunrise} sunset={sunset} />
+            </div>
+          </div>
         </div>
-        <div className="col-span-1">
-          <WeatherDescription weathercode={weathercode} isDay={isDay} />
+
+        {/* ── 10-Day forecast ── */}
+        <div>
+          <ForecastCards daily={daily} />
         </div>
-        <div className="col-span-1">
+
+        {/* ── Forecast Explorer (calendar) ── */}
+        <div>
+          <SectionLabel>Forecast Explorer</SectionLabel>
           <DateWeatherCard weather={weather} />
         </div>
+
+        {/* ── Location details ── */}
+        {searchedPlace && (
+          <LocationDetailsSection
+            name={searchedPlace.name}
+            country={searchedPlace.country}
+            countryCode={searchedPlace.countryCode}
+            lat={searchedPlace.lat}
+            lon={searchedPlace.lon}
+          />
+        )}
+
       </div>
-
-      <SunCard sunrise={sunrise} sunset={sunset} />
-
-      <HourlyGraph data={weather} />
-
-      <ForecastCards daily={daily} />
-
-      {searchedPlace && (
-        <LocationDetailsSection
-          name={searchedPlace.name}
-          country={searchedPlace.country}
-          countryCode={searchedPlace.countryCode}
-          lat={searchedPlace.lat}
-          lon={searchedPlace.lon}
-        />
-      )}
     </div>
   )
 }

@@ -4,6 +4,18 @@ export interface WeatherCurrent {
   rain: number
   weathercode: number
   is_day: number
+  apparent_temperature: number
+  wind_speed_10m: number
+  wind_direction_10m: number
+  surface_pressure: number
+  visibility: number
+}
+
+export interface WeatherHourly {
+  time: string[]
+  temperature_2m: number[]
+  relative_humidity_2m: number[]
+  precipitation_probability: number[]
 }
 
 export interface WeatherDaily {
@@ -14,12 +26,9 @@ export interface WeatherDaily {
   rain_sum: number[]
   sunrise: string[]
   sunset: string[]
-}
-
-export interface WeatherHourly {
-  time: string[]
-  temperature_2m: number[]
-  relative_humidity_2m: number[]
+  precipitation_probability_max: number[]
+  wind_speed_10m_max: number[]
+  uv_index_max: number[]
 }
 
 export interface WeatherData {
